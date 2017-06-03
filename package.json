@@ -1,0 +1,14 @@
+{
+  "name": "chorus-lambda",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "zip": "zip -r function.zip ."
+  },
+  "author": "holmesal <hello@alonso.io>",
+  "license": "UNLICENSED",
+  "dependencies": {
+
+  }
+}
