@@ -4,11 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "zip": "zip -r function.zip ."
+    "zip": "rm function.zip && zip -r function.zip . -x *.git*"
   },
   "author": "holmesal <hello@alonso.io>",
   "license": "UNLICENSED",
   "dependencies": {
-
+    "bluebird": "^3.5.0",
+    "path": "^0.12.7",
+    "request": "^2.81.0"
   }
 }
