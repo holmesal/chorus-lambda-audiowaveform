@@ -1,3 +1,5 @@
+"use strict";
+
 var request = require('request');
 var path = require('path');
 var fs = require('fs');
@@ -17,23 +19,25 @@ exports.handler = (event, context, callback) => {
 
 	console.info('event: ', event);
 
-	const audioUrl = event.audioUrl;
-	const pixelsPerSecond = event.pixelsPerSecond;
 	const id = event.id;
+	const audioSource = event.audioSource;
+	const dataPixelsPerSecond = event.dataPixelsPerSecond;
 	const bucket = event.bucket;
 
 	let start = Date.now();
 
-	downloadEpisode(audioUrl)
+	downloadEpisode(audioSource)
 	.tap(() => logTime('download', start))
-	.then(episodePath => generateWaveform(episodePath, pixelsPerSecond))
+	.then(episodePath => generateWaveform(episodePath, dataPixelsPerSecond))
 	.tap(() => logTime('generate', start))
 	.then(() => uploadWaveform(id, bucket))
 	.tap(() => logTime('upload', start))
-	.catch(err => callback(err))
-	.finally(() => {
-		callback(null, 'OK');
-	});
+	.then(waveformUrl => {
+		callback(null, {
+			waveformUrl
+		});
+	})
+	.catch(err => callback(err));
 
 };
 
@@ -42,18 +46,18 @@ const logTime = (label, start) => {
 	start = Date.now();
 };
 
-const downloadEpisode = audioUrl => new Promise((resolve, reject) => {
+const downloadEpisode = audioSource => new Promise((resolve, reject) => {
 	// Download the episode
-	console.info(`🌏 Downloading file from url: ${audioUrl}`);
+	console.info(`🌏 Downloading file from url: ${audioSource}`);
 
     // figure out the content type of this file
-    const extension = path.extname(audioUrl).split('?')[0];
+    const extension = path.extname(audioSource).split('?')[0];
 
     // Download
     const timestampBegin = Date.now();
     const episodePath = `/tmp/episode${extension}`;
     console.info({ extension, episodePath });
-    request(audioUrl)
+    request(audioSource)
         .on('err', reject)
         .on('end', res => {
             resolve(episodePath);
@@ -61,7 +65,7 @@ const downloadEpisode = audioUrl => new Promise((resolve, reject) => {
         .pipe(fs.createWriteStream(episodePath));
 });
 
-const generateWaveform = (episodePath, pixelsPerSecond) => new Promise((resolve, reject) => {
+const generateWaveform = (episodePath, dataPixelsPerSecond) => new Promise((resolve, reject) => {
 
 	var cmd = `./audiowaveform -i ${episodePath} -o ${waveformPath} -b 8 --pixels-per-second 5`;
 	console.info('running: ' + cmd);
@@ -110,7 +114,7 @@ To test locally,
 // exports.handler({
 // 	bucket: 'chorus-waveforms-dev',
 // 	id: 'new-lambda-test',
-// 	audioUrl: 'http://feeds.99percentinvisible.org/~r/99percentinvisible/~5/Kw1oEF9iEdc/199-The-Yin-and-Yang-of-Basketball-rebroadcast.mp3', 
+// 	audioSource: 'http://feeds.99percentinvisible.org/~r/99percentinvisible/~5/Kw1oEF9iEdc/199-The-Yin-and-Yang-of-Basketball-rebroadcast.mp3', 
 // 	dataPixelsPerSecond: 5
 // }, null, (err, text) => {
 // 	err ? console.error(err) : console.info(text)
