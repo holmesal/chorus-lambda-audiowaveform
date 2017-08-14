@@ -6,6 +6,7 @@ var fs = require('fs');
 var Promise = require('bluebird');
 var AWS = require('aws-sdk');
 var s3 = new AWS.S3();
+var eq = require('./eq.js');
 
 // See https://aws.amazon.com/blogs/compute/running-executables-in-aws-lambda/
 process.env['PATH'] = process.env['PATH'] + ':' + process.env['LAMBDA_TASK_ROOT'];
@@ -30,6 +31,8 @@ exports.handler = (event, context, callback) => {
 	.tap(() => logTime('download', start))
 	.then(episodePath => generateWaveform(episodePath, dataPixelsPerSecond))
 	.tap(() => logTime('generate', start))
+	.then(() => applyEq(waveformPath))
+	.tap(() => logTime('🌊 applyEqualization', start))
 	.then(() => uploadWaveform(id, bucket))
 	.tap(() => logTime('upload', start))
 	.then(waveformUrl => {
@@ -79,6 +82,13 @@ const generateWaveform = (episodePath, dataPixelsPerSecond) => new Promise((reso
 	  	resolve();
 	  }
 	});
+});
+
+const applyEq = (waveformPath) => new Promise((resolve, reject) => {
+	var waveform = JSON.parse(fs.readFileSync(waveformPath, 'utf8'))
+	waveform.data = eq(waveform.data)
+	fs.writeFileSync(waveformPath, JSON.stringify(waveform) )
+	resolve()
 });
 
 const uploadWaveform = (id, Bucket) => new Promise((resolve, reject) => {
